@@ -18,7 +18,27 @@ def convert_to_reals_vocab(words, vocab):
     """Do a very basic conversion from words to reals using a vocabulary."""
     return [vocab.index(w) / len(vocab) for w in words]
 
-def load_data(label_fname, data_fname):
+def load_training_data(fname):
+    """Load the training data."""
+    all_data = load_csv(fname, 'excel-tab')
+
+    labels = [rec[2] == 'OFF' for rec in all_data]
+    data = [clean_text(rec[1]) for rec in all_data]
+
+    vocab = []
+    for words in data:
+        vocab.extend(words)
+
+    data = [convert_to_reals_vocab(text, vocab) for text in data]
+    max_features = max([len(rec) for rec in data])
+
+    # Pad the data
+    for rec in data:
+        rec.extend([0.0] * (max_features - len(rec)))
+
+    return labels, data, max_features
+
+def load_test_data(label_fname, data_fname):
     """Load data and clean it for the training."""
     labels = load_csv(label_fname)
     data = load_csv(data_fname, 'excel-tab')
@@ -68,9 +88,8 @@ def fit_features(data, max_features):
     return np.array(ndata)
 
 def main():
-    training_labels, training_data, max_features = load_data(
-        'OLID/labels-levela.csv',
-        'OLID/testset-levela.tsv'
+    training_labels, training_data, max_features = load_training_data(
+        'OLID/olid-training-v1.0.tsv'
     )
     # Run Random Forest Algorithm
     model = RandomForestClassifier(n_estimators=100,
@@ -80,8 +99,8 @@ def main():
     # Fit to the training data
     model.fit(training_data, training_labels)
 
-    test_labels, test_data, _ = load_data('OLID/labels-levelb.csv',
-                                          'OLID/testset-levelb.tsv')
+    test_labels, test_data, _ = load_test_data('OLID/labels-levelb.csv',
+                                               'OLID/testset-levelb.tsv')
     test_data = fit_features(test_data, max_features)
     predicted_labels = model.predict(test_data)
 
